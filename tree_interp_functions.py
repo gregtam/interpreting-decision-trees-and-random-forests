@@ -5,6 +5,7 @@ import pandas as pd
 from sklearn.ensemble import RandomForestClassifier, RandomForestRegressor
 from sklearn.tree import DecisionTreeClassifier, DecisionTreeRegressor
 import seaborn as sns
+from statsmodels.nonparametric.smoothers_lowess import lowess
 from treeinterpreter import treeinterpreter as ti
 
 blue, green, red, purple, yellow, cyan = sns.color_palette()
@@ -22,14 +23,15 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     index - An integer representing which observation we would like to
             look at
     num_features - The number of features we wish to plot
-    order_by - What to order the contributions by. (Default: 'natural')
-               The default ordering is the natural one, which takes the
-               original feature ordering
+    order_by - What to order the contributions by. The default ordering
+               is the natural one, which takes the original feature
+               ordering. (Options: 'natural', 'contribution')
 
     Returns:
     obs_contrib_df - A Pandas DataFrame that includes the feature values
                      and their contributions
     """
+
     if order_by not in ['natural', 'contribution']:
         raise Exception('order_by must be either natural or contribution.')
 
@@ -80,7 +82,8 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     # properly
     return obs_contrib_df.iloc[::-1]
 
-def plot_single_feat_contrib(feat_name, features_df, contrib_df, **kwargs):
+def plot_single_feat_contrib(feat_name, features_df, contrib_df,
+                             add_smooth=False, frac=2/3.0, **kwargs):
     """Plots a single feature's values across all observations against
     their corresponding contributions.
 
@@ -88,20 +91,24 @@ def plot_single_feat_contrib(feat_name, features_df, contrib_df, **kwargs):
     feat_name - The name of the feature
     features_df - A Pandas DataFrame that includes the feature values
     contrib_df - A Pandas DataFrame that has the contributions
+    add_smooth - Add a lowess smoothing trend line (Default: False)
+    frac - The fraction of data used when estimating each y-value
+           (Default: 0.666666666)
     """
 
-    _temp_df = pd.DataFrame({'feat_value': features_df[feat_name].tolist(),
-                             'contrib': contrib_df[feat_name].tolist()
-                            })
-    _temp_df\
+    plot_df = pd.DataFrame({'feat_value': features_df[feat_name].tolist(),
+                            'contrib': contrib_df[feat_name].tolist()
+                           })
+    plot_df\
         .sort_values('feat_value')\
         .plot(x='feat_value', y='contrib', kind='scatter', **kwargs)
+
+    if add_smooth:
+        x_l, y_l = lowess(plot_df.contrib, plot_df.feat_value, frac=frac).T
+        plt.plot(x_l, y_l, c='black')
+
     plt.axhline(0, c='black', linestyle='--')
 
     plt.title('Conribution of {}'.format(feat_name))
     plt.xlabel(feat_name)
     plt.ylabel('Contribution')
-
-
-
-
