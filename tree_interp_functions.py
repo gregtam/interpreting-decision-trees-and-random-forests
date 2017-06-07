@@ -1,3 +1,5 @@
+from __future__ import division
+
 from IPython.display import display
 import matplotlib.pyplot as plt
 import numpy as np
@@ -71,11 +73,11 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
 
     true_label = labels.iloc[index]
     score = clf.predict_proba(features_df.iloc[index:index+1])[0][1]
-    plt.title('Label: {}; Probability: {:1.3f}'.format(true_label, score))
+    plt.title('Label: {}; Score: {:1.3f}'.format(true_label, score))
 
     x_coord = ax.get_xlim()[0]
     for y_coord, feat_val in enumerate(obs_contrib_head['feat_val']):
-        t = plt.text(x_coord, y_coord + 1, feat_val)
+        t = plt.text(x_coord, y_coord, feat_val)
         t.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor=blue))
 
     # Returns in reverse order because it needed to be reversed to plot
@@ -83,7 +85,7 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     return obs_contrib_df.iloc[::-1]
 
 def plot_single_feat_contrib(feat_name, features_df, contrib_df,
-                             add_smooth=False, frac=2/3.0, **kwargs):
+                             add_smooth=False, frac=2/3, **kwargs):
     """Plots a single feature's values across all observations against
     their corresponding contributions.
 
@@ -104,7 +106,9 @@ def plot_single_feat_contrib(feat_name, features_df, contrib_df,
         .plot(x='feat_value', y='contrib', kind='scatter', **kwargs)
 
     if add_smooth:
+        # Gets lowess fit points
         x_l, y_l = lowess(plot_df.contrib, plot_df.feat_value, frac=frac).T
+        # Overlays lowess curve onto data
         plt.plot(x_l, y_l, c='black')
 
     plt.axhline(0, c='black', linestyle='--')
