@@ -13,7 +13,7 @@ from treeinterpreter import treeinterpreter as ti
 blue, green, red, purple, yellow, cyan = sns.color_palette()
 
 def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
-                          num_features=20, order_by='natural', violin=False):
+                          num_features=None, order_by='natural', violin=False):
     """Plots the top features and their contributions for a given
     observation.
 
@@ -24,7 +24,8 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     labels - A Pandas Series of the labels
     index - An integer representing which observation we would like to
             look at
-    num_features - The number of features we wish to plot
+    num_features - The number of features we wish to plot. If None, then
+                   plot all features (Default: None)
     order_by - What to order the contributions by. The default ordering
                is the natural one, which takes the original feature
                ordering. (Options: 'natural', 'contribution')
@@ -51,7 +52,11 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     if order_by == 'contribution':
         obs_contrib_df.sort_values('abs_contrib', inplace=True)
 
-    obs_contrib_head = obs_contrib_df.tail(num_features)
+    # Trim the contributions if num_features is specified
+    if num_features is not None:
+        obs_contrib_head = obs_contrib_df.tail(num_features).copy()
+    else:
+        obs_contrib_head = obs_contrib_df.copy()
 
     fig, ax = plt.subplots()
     if violin:
@@ -74,6 +79,7 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     true_label = labels.iloc[index]
     score = clf.predict_proba(features_df.iloc[index:index+1])[0][1]
     plt.title('Label: {}; Score: {:1.3f}'.format(true_label, score))
+    plt.xlabel('Contribution of feature')
 
     x_coord = ax.get_xlim()[0]
     for y_coord, feat_val in enumerate(obs_contrib_head['feat_val']):
