@@ -18,7 +18,7 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     observation.
 
     Inputs:
-    clf - The Decision Tree or Random Forest classifier object
+    clf - A Decision Tree or Random Forest classifier object
     contrib_df - A Pandas DataFrame of the feature contributions
     features_df - A Pandas DataFrame with the features
     labels - A Pandas Series of the labels
@@ -74,11 +74,17 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     else:
         obs_contrib_head['contrib'].plot(kind='barh', ax=ax)
 
-    plt.axvline(0, c='black', linestyle='--')
+    plt.axvline(0, c='black', linestyle='--', linewidth=2)
 
     true_label = labels.iloc[index]
-    score = clf.predict_proba(features_df.iloc[index:index+1])[0][1]
-    plt.title('Label: {}; Score: {:1.3f}'.format(true_label, score))
+    if isinstance(clf, DecisionTreeClassifier)\
+            or isinstance(clf, RandomForestClassifier):
+        score = clf.predict_proba(features_df.iloc[index:index+1])[0][1]
+        plt.title('True Value: {}; Score: {:1.3f}'.format(true_label, score))
+    elif isinstance(clf, DecisionTreeRegressor)\
+            or isinstance(clf, RandomForestRegressor):
+        pred = clf.predict(features_df.iloc[index:index+1])[0]
+        plt.title('True Value: {}; Predicted Value: {:1.3f}'.format(true_label, pred))
     plt.xlabel('Contribution of feature')
 
     x_coord = ax.get_xlim()[0]
@@ -117,7 +123,7 @@ def plot_single_feat_contrib(feat_name, features_df, contrib_df,
         # Overlays lowess curve onto data
         plt.plot(x_l, y_l, c='black')
 
-    plt.axhline(0, c='black', linestyle='--')
+    plt.axhline(0, c='black', linestyle='--', linewidth=2)
 
     plt.title('Conribution of {}'.format(feat_name))
     plt.xlabel(feat_name)
