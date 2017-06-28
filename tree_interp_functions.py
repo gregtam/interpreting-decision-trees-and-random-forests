@@ -10,7 +10,7 @@ import seaborn as sns
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from treeinterpreter import treeinterpreter as ti
 
-blue, green, red, purple, yellow, cyan = sns.color_palette()
+blue, green, red, purple, yellow, cyan = sns.color_palette('deep')
 
 def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
                           num_features=None, order_by='natural', violin=False):
