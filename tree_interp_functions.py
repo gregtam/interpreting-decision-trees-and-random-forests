@@ -61,14 +61,15 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     fig, ax = plt.subplots()
     if violin:
         plt.violinplot([contrib_df[i] for i in obs_contrib_head.index],
-                       vert=False
+                       vert=False,
+                       positions=np.arange(len(obs_contrib_head))
                       )
         plt.scatter(obs_contrib_head.contrib, 
-                    np.arange(obs_contrib_head.shape[0]) + 1, 
+                    np.arange(obs_contrib_head.shape[0]), 
                     c=red, 
                     s=100 
                    )
-        plt.yticks(np.arange(obs_contrib_head.shape[0]) + 1,
+        plt.yticks(np.arange(obs_contrib_head.shape[0]),
                    obs_contrib_head.index
                   )
     else:
