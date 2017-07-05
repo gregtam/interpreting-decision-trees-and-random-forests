@@ -10,7 +10,8 @@ import seaborn as sns
 from statsmodels.nonparametric.smoothers_lowess import lowess
 from treeinterpreter import treeinterpreter as ti
 
-blue, green, red, purple, yellow, cyan = sns.color_palette('deep')
+sns.set_palette('colorblind')
+blue, green, red, purple, yellow, cyan = sns.color_palette('colorblind')
 
 def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
                           num_features=None, order_by='natural', violin=False):
@@ -98,7 +99,7 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
     return obs_contrib_df.iloc[::-1]
 
 def plot_single_feat_contrib(feat_name, features_df, contrib_df,
-                             add_smooth=False, frac=2/3, **kwargs):
+                             add_smooth=False, frac=2/3, class_='', **kwargs):
     """Plots a single feature's values across all observations against
     their corresponding contributions.
 
@@ -111,21 +112,43 @@ def plot_single_feat_contrib(feat_name, features_df, contrib_df,
            (Default: 0.666666666)
     """
 
+    # Create a DataFrame to plot the contributions
     plot_df = pd.DataFrame({'feat_value': features_df[feat_name].tolist(),
                             'contrib': contrib_df[feat_name].tolist()
                            })
-    plot_df\
-        .sort_values('feat_value')\
-        .plot(x='feat_value', y='contrib', kind='scatter', **kwargs)
+
+    # Set title according to class_
+    if class_ == '':
+        title = 'Contribution of {}'.format(feat_name)
+    else:
+        title = 'Conribution of {} ({})'.format(feat_name, class_)
+
+    # If a matplotlib ax is specified in the kwargs, then set ax to it
+    # so we can overlay multiple plots together.
+    if 'ax' in kwargs:
+        ax = kwargs['ax']
+        # If size is not specified, set to default matplotlib size
+        if 's' not in kwargs:
+            kwargs['s'] = 40
+        plot_df\
+            .sort_values('feat_value')\
+            .plot(x='feat_value', y='contrib', kind='scatter', **kwargs)
+        ax.axhline(0, c='black', linestyle='--', linewidth=2)
+        ax.set_title(title)
+        ax.set_xlabel(feat_name)
+        ax.set_ylabel('Contribution')
+    else:
+        plt.scatter(plot_df.feat_value, plot_df.contrib, **kwargs)
+        plt.axhline(0, c='black', linestyle='--', linewidth=2)
+        plt.title(title)
+        plt.xlabel(feat_name)
+        plt.ylabel('Contribution')
 
     if add_smooth:
         # Gets lowess fit points
         x_l, y_l = lowess(plot_df.contrib, plot_df.feat_value, frac=frac).T
         # Overlays lowess curve onto data
-        plt.plot(x_l, y_l, c='black')
-
-    plt.axhline(0, c='black', linestyle='--', linewidth=2)
-
-    plt.title('Conribution of {}'.format(feat_name))
-    plt.xlabel(feat_name)
-    plt.ylabel('Contribution')
+        if 'ax' in kwargs:
+            ax.plot(x_l, y_l, c='black')
+        else:
+            plt.plot(x_l, y_l, c='black')
