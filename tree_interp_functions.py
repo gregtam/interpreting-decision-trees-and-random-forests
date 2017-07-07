@@ -13,41 +13,92 @@ from treeinterpreter import treeinterpreter as ti
 sns.set_palette('colorblind')
 blue, green, red, purple, yellow, cyan = sns.color_palette('colorblind')
 
-def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
-                          num_features=None, order_by='natural', violin=False):
-    """Plots the top features and their contributions for a given
-    observation.
+def plot_obs_feature_contrib(clf, contributions, features_df, labels, index, 
+                             class_index=0, num_features=None,
+                             order_by='natural', violin=False):
+    """Plots a single observation's feature contributions.
 
     Inputs:
-    clf - A Decision Tree or Random Forest classifier object
-    contrib_df - A Pandas DataFrame of the feature contributions
-    features_df - A Pandas DataFrame with the features
-    labels - A Pandas Series of the labels
-    index - An integer representing which observation we would like to
-            look at
-    num_features - The number of features we wish to plot. If None, then
-                   plot all features (Default: None)
-    order_by - What to order the contributions by. The default ordering
-               is the natural one, which takes the original feature
-               ordering. (Options: 'natural', 'contribution')
-
-    Returns:
-    obs_contrib_df - A Pandas DataFrame that includes the feature values
-                     and their contributions
     """
 
-    if order_by not in ['natural', 'contribution']:
-        raise Exception('order_by must be either natural or contribution.')
+    def _extract_contrib_array():
+        # If regression tree
+        if len(contributions.shape) == 2:
+            contrib_array = contributions[index]
+        # If classification tree
+        elif len(contributions.shape) == 3:
+            if class_index >= contributions.shape[2]:
+                raise Exception('class_index exceeds number of classes.')
+            contrib_array = contributions[index, :, class_index]
+        else:
+            raise Exception('contributions is not the right shape.')    
+
+        return contrib_array
+
+    def _plot_contrib():
+        """Plot contributions for a given observation. Also plot violin
+        plots for all other observations if specified.
+        """
+        fig, ax = plt.subplots()
+        if violin:
+            # Get contributions for the class
+            if len(contributions.shape) == 2:
+                contrib = contributions
+            elif len(contributions.shape) == 3:
+                contrib = contributions[:, :, class_index]
+
+            contrib_df = pd.DataFrame(contrib, columns=features_df.columns)
+            # Plot a violin plot using only variables in obs_contrib_tail
+            plt.violinplot([contrib_df[w] for w in obs_contrib_tail.index],
+                           vert=False,
+                           positions=np.arange(len(obs_contrib_tail))
+                          )
+            plt.scatter(obs_contrib_tail.contrib, 
+                        np.arange(obs_contrib_tail.shape[0]), 
+                        color=red, 
+                        s=100
+                       )
+            plt.yticks(np.arange(obs_contrib_tail.shape[0]),
+                       obs_contrib_tail.index
+                      )
+        else:
+            obs_contrib_tail['contrib'].plot(kind='barh', ax=ax)
+
+        plt.axvline(0, c='black', linestyle='--', linewidth=2)
+
+        x_coord = ax.get_xlim()[0]
+        for y_coord, feat_val in enumerate(obs_contrib_tail['feat_val']):
+            t = plt.text(x_coord, y_coord, feat_val)
+            t.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor=blue))
+
+    def _edit_axes():
+        plt.xlabel('Contribution of feature')
+        true_label = labels.iloc[index]
+        if isinstance(clf, DecisionTreeClassifier)\
+                or isinstance(clf, RandomForestClassifier):
+            scores = clf.predict_proba(features_df.iloc[index:index+1])[0]
+            scores = [float('{:1.3f}'.format(i)) for i in scores]
+            plt.title('True Value: {}\nScores: {}'
+                          .format(true_label, scores[class_index]))
+            # Returns obs_contrib_df (flipped back), true labels, and scores 
+            return obs_contrib_df.iloc[::1], true_label, scores
+
+        elif isinstance(clf, DecisionTreeRegressor)\
+                or isinstance(clf, RandomForestRegressor):
+            pred = clf.predict(features_df.iloc[index:index+1])[0]
+            plt.title('True Value: {}\nPredicted Value: {:1.3f}'
+                          .format(true_label, pred))
+            # Returns obs_contrib_df (flipped back), true labels, and scores 
+            return obs_contrib_df.iloc[::-1], true_label, pred
 
     feature_array = features_df.iloc[index]
-    contrib_array = contrib_df.iloc[index]
+    contrib_array = _extract_contrib_array()
 
     obs_contrib_df = pd.DataFrame({'feat_val': feature_array,
                                    'contrib': contrib_array
                                   })
-    # Flip rows vertically so that column names are in the same order as
-    # the original data set.
-    obs_contrib_df = obs_contrib_df.iloc[::-1, :]
+    # Flip DataFrame vertically to plot in same order
+    obs_contrib_df = obs_contrib_df.iloc[::-1]
 
     obs_contrib_df['abs_contrib'] = np.abs(obs_contrib_df['contrib'])
     if order_by == 'contribution':
@@ -55,48 +106,13 @@ def plot_top_feat_contrib(clf, contrib_df, features_df, labels, index,
 
     # Trim the contributions if num_features is specified
     if num_features is not None:
-        obs_contrib_head = obs_contrib_df.tail(num_features).copy()
+        obs_contrib_tail = obs_contrib_df.tail(num_features).copy()
     else:
-        obs_contrib_head = obs_contrib_df.copy()
+        obs_contrib_tail = obs_contrib_df.copy()
 
-    fig, ax = plt.subplots()
-    if violin:
-        plt.violinplot([contrib_df[i] for i in obs_contrib_head.index],
-                       vert=False,
-                       positions=np.arange(len(obs_contrib_head))
-                      )
-        plt.scatter(obs_contrib_head.contrib, 
-                    np.arange(obs_contrib_head.shape[0]), 
-                    c=red, 
-                    s=100 
-                   )
-        plt.yticks(np.arange(obs_contrib_head.shape[0]),
-                   obs_contrib_head.index
-                  )
-    else:
-        obs_contrib_head['contrib'].plot(kind='barh', ax=ax)
+    _plot_contrib()
+    return _edit_axes()
 
-    plt.axvline(0, c='black', linestyle='--', linewidth=2)
-
-    true_label = labels.iloc[index]
-    if isinstance(clf, DecisionTreeClassifier)\
-            or isinstance(clf, RandomForestClassifier):
-        score = clf.predict_proba(features_df.iloc[index:index+1])[0][1]
-        plt.title('True Value: {}; Score: {:1.3f}'.format(true_label, score))
-    elif isinstance(clf, DecisionTreeRegressor)\
-            or isinstance(clf, RandomForestRegressor):
-        pred = clf.predict(features_df.iloc[index:index+1])[0]
-        plt.title('True Value: {}; Predicted Value: {:1.3f}'.format(true_label, pred))
-    plt.xlabel('Contribution of feature')
-
-    x_coord = ax.get_xlim()[0]
-    for y_coord, feat_val in enumerate(obs_contrib_head['feat_val']):
-        t = plt.text(x_coord, y_coord, feat_val)
-        t.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor=blue))
-
-    # Returns in reverse order because it needed to be reversed to plot
-    # properly
-    return obs_contrib_df.iloc[::-1]
 
 def plot_single_feat_contrib(feat_name, features_df, contrib_df,
                              add_smooth=False, frac=2/3, class_='', **kwargs):
