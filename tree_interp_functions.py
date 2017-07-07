@@ -19,6 +19,23 @@ def plot_obs_feature_contrib(clf, contributions, features_df, labels, index,
     """Plots a single observation's feature contributions.
 
     Inputs:
+    clf - A Decision Tree or Random Forest classifier object
+    contributions - The contributions from treeinterpreter
+    features_df - A Pandas DataFrame with the features
+    labels - A Pandas Series of the labels
+    index - An integer representing which observation we would like to
+            look at
+    class_index - The index of which class to look at (Default: 0)
+    num_features - The number of features we wish to plot. If None, then
+                   plot all features (Default: None)
+    order_by - What to order the contributions by. The default ordering
+               is the natural one, which takes the original feature
+               ordering. (Options: 'natural', 'contribution')
+    violin - Whether to plot violin plots (Default: False)
+    
+    Returns:
+    obs_contrib_df - A Pandas DataFrame that includes the feature values
+                     and their contributions
     """
 
     def _extract_contrib_array():
