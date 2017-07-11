@@ -32,7 +32,7 @@ def plot_obs_feature_contrib(clf, contributions, features_df, labels, index,
                is the natural one, which takes the original feature
                ordering. (Options: 'natural', 'contribution')
     violin - Whether to plot violin plots (Default: False)
-    
+
     Returns:
     obs_contrib_df - A Pandas DataFrame that includes the feature values
                      and their contributions
@@ -131,57 +131,87 @@ def plot_obs_feature_contrib(clf, contributions, features_df, labels, index,
     return _edit_axes()
 
 
-def plot_single_feat_contrib(feat_name, features_df, contrib_df,
-                             add_smooth=False, frac=2/3, class_='', **kwargs):
+def plot_single_feat_contrib(feat_name, contributions, features_df,
+                             class_index=0, class_name='', add_smooth=False,
+                             frac=2/3, **kwargs):
     """Plots a single feature's values across all observations against
     their corresponding contributions.
 
     Inputs:
     feat_name - The name of the feature
-    features_df - A Pandas DataFrame that includes the feature values
-    contrib_df - A Pandas DataFrame that has the contributions
+    contributions - The contributions from treeinterpreter
+    features_df - A Pandas DataFrame with the features
+    class_index - The index of the class to plot (Default: 0)
+    class_name - The name of the class being plotted (Default: '')
     add_smooth - Add a lowess smoothing trend line (Default: False)
     frac - The fraction of data used when estimating each y-value
-           (Default: 0.666666666)
+           (Default: 2/3)
     """
 
+
     # Create a DataFrame to plot the contributions
-    plot_df = pd.DataFrame({'feat_value': features_df[feat_name].tolist(),
-                            'contrib': contrib_df[feat_name].tolist()
-                           })
+    def _get_plot_df():
+        """Gets the feature values and their contributions."""
 
-    # Set title according to class_
-    if class_ == '':
-        title = 'Contribution of {}'.format(feat_name)
-    else:
-        title = 'Conribution of {} ({})'.format(feat_name, class_)
+        if len(contributions.shape) == 2:
+            contrib_array = contributions[:, feat_index]
+        elif len(contributions.shape) == 3:
+            contrib_array = contributions[:, feat_index, class_index]
+        else:
+            raise Exception('contributions is not the right shape.')
 
-    # If a matplotlib ax is specified in the kwargs, then set ax to it
-    # so we can overlay multiple plots together.
-    if 'ax' in kwargs:
-        ax = kwargs['ax']
-        # If size is not specified, set to default matplotlib size
-        if 's' not in kwargs:
-            kwargs['s'] = 40
-        plot_df\
-            .sort_values('feat_value')\
-            .plot(x='feat_value', y='contrib', kind='scatter', **kwargs)
-        ax.axhline(0, c='black', linestyle='--', linewidth=2)
-        ax.set_title(title)
-        ax.set_xlabel(feat_name)
-        ax.set_ylabel('Contribution')
-    else:
-        plt.scatter(plot_df.feat_value, plot_df.contrib, **kwargs)
-        plt.axhline(0, c='black', linestyle='--', linewidth=2)
-        plt.title(title)
-        plt.xlabel(feat_name)
-        plt.ylabel('Contribution')
+        plot_df = pd.DataFrame({'feat_value': features_df[feat_name].tolist(),
+                                'contrib': contrib_array
+                               })
+        return plot_df
 
-    if add_smooth:
+    def _get_title():
+        # Set title according to class_
+        if class_name == '':
+            return 'Contribution of {}'.format(feat_name)
+        else:
+            return 'Conribution of {} ({})'.format(feat_name, class_name)
+
+    def _plot_contrib():
+        # If a matplotlib ax is specified in the kwargs, then set ax to it
+        # so we can overlay multiple plots together.
+        if 'ax' in kwargs:
+            ax = kwargs['ax']
+            # If size is not specified, set to default matplotlib size
+            if 's' not in kwargs:
+                kwargs['s'] = 40
+            plot_df\
+                .sort_values('feat_value')\
+                .plot(x='feat_value', y='contrib', kind='scatter', **kwargs)
+            ax.axhline(0, c='black', linestyle='--', linewidth=2)
+            ax.set_title(title)
+            ax.set_xlabel(feat_name)
+            ax.set_ylabel('Contribution')
+        else:
+            plt.scatter(plot_df.feat_value, plot_df.contrib, **kwargs)
+            plt.axhline(0, c='black', linestyle='--', linewidth=2)
+            plt.title(title)
+            plt.xlabel(feat_name)
+            plt.ylabel('Contribution')
+
+    def _plot_smooth():
         # Gets lowess fit points
         x_l, y_l = lowess(plot_df.contrib, plot_df.feat_value, frac=frac).T
         # Overlays lowess curve onto data
         if 'ax' in kwargs:
+            ax = kwargs['ax']
             ax.plot(x_l, y_l, c='black')
         else:
             plt.plot(x_l, y_l, c='black')
+
+    # Get the index of the feature
+    feat_index = features_df.columns.get_loc(feat_name)
+    # Gets the DataFrame to plot
+    plot_df = _get_plot_df()
+
+    title = _get_title()
+
+    _plot_contrib()
+
+    if add_smooth:
+        _plot_smooth()
