@@ -41,14 +41,16 @@ def plot_obs_feature_contrib(clf, contributions, features_df, labels, index,
     def _extract_contrib_array():
         # If regression tree
         if len(contributions.shape) == 2:
+            if class_index > 0:
+                raise ValueError('class_index cannot be positive for regression.')
             contrib_array = contributions[index]
         # If classification tree
         elif len(contributions.shape) == 3:
             if class_index >= contributions.shape[2]:
-                raise Exception('class_index exceeds number of classes.')
+                raise ValueError('class_index exceeds number of classes.')
             contrib_array = contributions[index, :, class_index]
         else:
-            raise Exception('contributions is not the right shape.')    
+            raise ValueError('contributions is not the right shape.')
 
         return contrib_array
 
