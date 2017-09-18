@@ -15,7 +15,7 @@ blue, green, red, purple, yellow, cyan = sns.color_palette('colorblind')
 
 def plot_obs_feature_contrib(clf, contributions, features_df, labels, index, 
                              class_index=0, num_features=None,
-                             order_by='natural', violin=False):
+                             order_by='natural', violin=False, **kwargs):
     """Plots a single observation's feature contributions.
 
     Inputs:
@@ -58,7 +58,6 @@ def plot_obs_feature_contrib(clf, contributions, features_df, labels, index,
         """Plot contributions for a given observation. Also plot violin
         plots for all other observations if specified.
         """
-        fig, ax = plt.subplots()
         if violin:
             # Get contributions for the class
             if len(contributions.shape) == 2:
@@ -67,48 +66,92 @@ def plot_obs_feature_contrib(clf, contributions, features_df, labels, index,
                 contrib = contributions[:, :, class_index]
 
             contrib_df = pd.DataFrame(contrib, columns=features_df.columns)
-            # Plot a violin plot using only variables in obs_contrib_tail
-            plt.violinplot([contrib_df[w] for w in obs_contrib_tail.index],
-                           vert=False,
-                           positions=np.arange(len(obs_contrib_tail))
+
+            if has_ax:
+                ax.violinplot([contrib_df[w] for w in obs_contrib_tail.index],
+                              vert=False,
+                              positions=np.arange(len(obs_contrib_tail))
+                             )
+                ax.scatter(obs_contrib_tail.contrib,
+                           np.arange(obs_contrib_tail.shape[0]),
+                           color=red,
+                           s=100
                           )
-            plt.scatter(obs_contrib_tail.contrib, 
-                        np.arange(obs_contrib_tail.shape[0]), 
-                        color=red, 
-                        s=100
-                       )
-            plt.yticks(np.arange(obs_contrib_tail.shape[0]),
-                       obs_contrib_tail.index
-                      )
+                ax.set_yticks(np.arange(obs_contrib_tail.shape[0]))
+                ax.set_yticklabels(obs_contrib_tail.index)
+
+            else:
+                # Plot a violin plot using only variables in obs_contrib_tail
+                plt.violinplot([contrib_df[w] for w in obs_contrib_tail.index],
+                               vert=False,
+                               positions=np.arange(len(obs_contrib_tail))
+                              )
+                plt.scatter(obs_contrib_tail.contrib,
+                            np.arange(obs_contrib_tail.shape[0]),
+                            color=red,
+                            s=100
+                           )
+                plt.yticks(np.arange(obs_contrib_tail.shape[0]),
+                           obs_contrib_tail.index
+                          )
         else:
             obs_contrib_tail['contrib'].plot(kind='barh', ax=ax)
 
-        plt.axvline(0, c='black', linestyle='--', linewidth=2)
+        if has_ax:
+            ax.axvline(0, c='black', linestyle='--', linewidth=2)
+        else:
+            plt.axvline(0, c='black', linestyle='--', linewidth=2)
 
         x_coord = ax.get_xlim()[0]
         for y_coord, feat_val in enumerate(obs_contrib_tail['feat_val']):
-            t = plt.text(x_coord, y_coord, feat_val)
+            if has_ax:
+                t = ax.text(x_coord, y_coord, feat_val)
+            else:
+                t = plt.text(x_coord, y_coord, feat_val)
             t.set_bbox(dict(facecolor='white', alpha=0.5, edgecolor=blue))
 
     def _edit_axes():
-        plt.xlabel('Contribution of feature')
+        if has_ax:
+            ax.set_xlabel('Contribution of feature')
+        else:
+            plt.xlabel('Contribution of feature')
+
         true_label = labels.iloc[index]
         if isinstance(clf, DecisionTreeClassifier)\
                 or isinstance(clf, RandomForestClassifier):
             scores = clf.predict_proba(features_df.iloc[index:index+1])[0]
             scores = [float('{:1.3f}'.format(i)) for i in scores]
-            plt.title('True Value: {}\nScores: {}'
-                          .format(true_label, scores[class_index]))
+
+            if has_ax:
+                ax.set_title('True Value: {}\nScores: {}'
+                                 .format(true_label, scores[class_index]))
+            else:
+                plt.title('True Value: {}\nScores: {}'
+                              .format(true_label, scores[class_index]))
+
             # Returns obs_contrib_df (flipped back), true labels, and scores 
             return obs_contrib_df.iloc[::1], true_label, scores
 
         elif isinstance(clf, DecisionTreeRegressor)\
                 or isinstance(clf, RandomForestRegressor):
             pred = clf.predict(features_df.iloc[index:index+1])[0]
-            plt.title('True Value: {}\nPredicted Value: {:1.3f}'
-                          .format(true_label, pred))
+
+            if has_ax:
+                ax.set_title('True Value: {}\nPredicted Value: {:1.3f}'
+                                 .format(true_label, pred))
+            else:
+                plt.title('True Value: {}\nPredicted Value: {:1.3f}'
+                              .format(true_label, pred))
+
             # Returns obs_contrib_df (flipped back), true labels, and scores 
             return obs_contrib_df.iloc[::-1], true_label, pred
+
+    if 'ax' in kwargs:
+        has_ax = True
+        ax = kwargs['ax']
+    else:
+        has_ax = False
+        fig, ax = plt.subplots()
 
     feature_array = features_df.iloc[index]
     contrib_array = _extract_contrib_array()
@@ -210,9 +253,7 @@ def plot_single_feat_contrib(feat_name, contributions, features_df,
     feat_index = features_df.columns.get_loc(feat_name)
     # Gets the DataFrame to plot
     plot_df = _get_plot_df()
-
     title = _get_title()
-
     _plot_contrib()
 
     if add_smooth:
