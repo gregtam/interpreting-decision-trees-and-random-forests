@@ -6,3 +6,5 @@ Links to his blog:
 - http://blog.datadive.net/interpreting-random-forests/
 - http://blog.datadive.net/random-forest-interpretation-with-scikit-learn/
 - http://blog.datadive.net/random-forest-interpretation-conditional-feature-contributions/
+
+View my blog on this [here](http://engineering.pivotal.io/post/interpreting-decision-trees-and-random-forests/). 
